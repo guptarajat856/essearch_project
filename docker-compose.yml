@@ -1,0 +1,54 @@
+version: '3'
+
+services:
+  elasticsearch: # Elasticsearch Instance
+    container_name: gs-search
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.1.1
+    volumes: # Persist ES data in seperate "esdata" volume
+      - esdata:/usr/share/elasticsearch/data
+    environment:
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.type=single-node
+    expose:
+      - "9200"
+      - "9300"
+    ports: # Expose Elasticsearch ports
+      - "9300:9300"
+      - "9200:9200"
+
+  api: # Node.js App
+    container_name: gs-api
+    image: esproject
+    depends_on:
+      - elasticsearch
+    ports:
+      - "3000:3000" # Expose API port
+      - "9229:9229" # Expose Node process debug port (disable in production)
+    environment: # Set ENV vars
+     - ES_HOST=192.168.99.100
+     - PORT=3000
+    volumes: # Attach local book data directory
+      - ./books:/usr/src/app/books
+
+  feserver: # Node.js App
+    container_name: gs-fe-server
+    image: frontend
+    ports:
+      - "8080:8080" # Expose API port
+    environment: # Set ENV vars
+     - NODE_ENV=local
+     - PORT=8080
+    volumes: # Attach local book data directory
+      - ./books:/usr/src/app/books
+
+  # feclient: # Nginx Server For Frontend App
+  #   container_name: gs-fe-client
+  #   image: nginx
+  #   volumes: # Serve local "public" dir
+  #     - ./public:/usr/share/nginx/html
+  #   ports:
+  #     - "8081:80" # Forward site to localhost:8080
+
+volumes: # Define seperate volume for Elasticsearch data
+  esdata:
